@@ -1,52 +1,43 @@
-import { EntityParser, type XmlNode } from '../xml-parser/entity-parser';
-import { EntityType } from '../constants';
-import { createEntitySet, getLastEntityType } from '../utils';
+import { EntityParser } from '../xml-parser/entity-parser';
+import type { XmlNode } from '../xml-parser/entity-parser';
+import type { EntityType } from '../constants';
 
+export type EntityRecord = Record<string, string | undefined>;
+export type EntityRecords<T extends EntityType = EntityType> = Record<T, EntityRecord[]>;
+export type EntityFilter = (record: XmlNode) => boolean;
 
-type IRecord = Omit<XmlNode, '_tag'>;
-
-export const readEntityFile = async (filename: string, entities: Array<EntityType>, _compareFunc?: (record: Record<string, unknown>) => boolean) => {
+export const readEntityFile = <T extends EntityType>(
+  filename: string,
+  entities: readonly T[],
+  compareFunc: EntityFilter = () => true
+): Promise<EntityRecords<T>> => {
   return new Promise((resolve, reject) => {
-    const lastEntity = getLastEntityType(entities);
-    const entitySet = createEntitySet(entities);
-    const reader = new EntityParser(filename, { entitySet, lastEntity });
-    const compareFunc = typeof _compareFunc === 'function' ? _compareFunc : () => true;
-    let isCleanUp = false;
-
-    let records: Record<string, Array<IRecord>> = entities.reduce((acc, current) => {
-      acc[current] = [];
-      return acc;
-    }, {} as Record<string, Array<IRecord>>);
-    const cleanUp = () => {
-      if (!isCleanUp) {
-        isCleanUp = true;
-        reader.clearBuffers();
-        reader.destroy();
+    const records = Object.fromEntries(entities.map(entity => [entity, [] as EntityRecord[]])) as EntityRecords<T>;
+    const reader = new EntityParser(filename, { entitySet: new Set(entities) });
+    reader.on('record', (node: XmlNode) => {
+      if (!compareFunc(node)) return;
+      const record: EntityRecord = {};
+      for (const [key, value] of Object.entries(node)) {
+        // Whitespace between child fields is XML formatting, not a record field.
+        if (key === 'text' && node.children?.length && typeof value === 'string' && !value.trim()) continue;
+        if (key !== '_tag' && key !== '_level' && key !== 'children') {
+          Object.defineProperty(record, key, { value, enumerable: true, writable: true, configurable: true });
+        }
       }
-    }
-    reader.on('record', function(_record: XmlNode) {
-      if (!compareFunc(_record)) {
-        return;
-      }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { _tag, _level, children = [], ...record } = _record;
-      if (children.length > 0) {
-        children.forEach((child: XmlNode) => {
-          record[child._tag] = child.text;
+      for (const child of node.children ?? []) {
+        Object.defineProperty(record, child._tag, {
+          value: child.text ?? '', enumerable: true, writable: true, configurable: true
         });
       }
-      const tagName = _tag;
-      records[tagName].push(record);
-    })
-
-    reader.on('end', function() {
+      records[node._tag as T].push(record);
+    });
+    reader.on('end', () => {
+      reader.destroy();
       resolve(records);
-      cleanUp();
-    })
-
-    reader.on('error', function(err: Error) {
-      reject(err);
-      cleanUp();
-    })
+    });
+    reader.on('error', (error: Error) => {
+      reader.destroy();
+      reject(error);
+    });
   });
-}
+};

@@ -1,52 +1,37 @@
 import { ObjectParser, type XmlNode } from '../xml-parser/object-parser';
 
-type IRecord = Omit<XmlNode, '_tag'>;
+export type ObjectRecord = Record<string, string | null>;
+export type ObjectRecords = Partial<Record<string, ObjectRecord[]>>;
 
-export const readObjectFile = async (filename: string, tables: Array<any>) => {
+export const readObjectFile = (filename: string, tables: readonly string[]): Promise<ObjectRecords> => {
   return new Promise((resolve, reject) => {
-    const tableSet = new Set(tables);
-    const lastTable = tables.sort((a, b) => a.localeCompare(b))[tables.length - 1];
-    const reader = new ObjectParser(filename, { tableSet, lastTable });
-    let isCleanUp = false;
-    let records: Record<string, Array<IRecord>> = {};
-    const cleanUp = () => {
-      if (!isCleanUp) {
-        isCleanUp = true;
-        reader.clearBuffers();
-        reader.destroy();
+    const records: ObjectRecords = {};
+    const reader = new ObjectParser(filename, { tableSet: new Set(tables) });
+    reader.on('record', (node: XmlNode) => {
+      const tableName = String(node.tableName);
+      if (!Object.prototype.hasOwnProperty.call(records, tableName)) {
+        Object.defineProperty(records, tableName, { value: [], enumerable: true });
       }
-    }
-
-    reader.on('record', function(_record: XmlNode) {
-      const tableName = _record.tableName;
-      // 修复内存问题：只在第一次创建数组，避免覆盖已有数据
-      if (!records[tableName]) {
-        records[tableName] = [] as Array<IRecord>;
-      }
-      const columns: Array<string> = [];
-      _record.children?.forEach((child: XmlNode) => {
+      const columns: string[] = [];
+      for (const child of node.children ?? []) {
+        if (child._tag === 'column') columns.push(String(child.name).toLowerCase());
         if (child._tag === 'row') {
-          const rowValue = child.children?.reduce((acc: Record<string, unknown>, cur: XmlNode, index: number) => {
-            acc[columns[index]] = cur.text.trim();
-            return acc;
-          }, {});
-          records[tableName].push(rowValue as IRecord);
+          const cells = child.children ?? [];
+          if (cells.length !== columns.length) throw new Error(`Column count mismatch in table ${tableName}`);
+          const row = Object.fromEntries(cells.map((cell, index) => [
+            columns[index], cell._tag === 'null' ? null : (cell.text ?? '')
+          ]));
+          records[tableName]!.push(row);
         }
-        if (child._tag === 'column') {
-          columns.push(child.name!.toLowerCase());
-        }
-      });
-    })
-
-
-    reader.on('end', function() {
+      }
+    });
+    reader.on('end', () => {
+      reader.destroy();
       resolve(records);
-      cleanUp();
-    })
-
-    reader.on('error', function(err: Error) {
-      reject(err);
-      cleanUp();
-    })
+    });
+    reader.on('error', (error: Error) => {
+      reader.destroy();
+      reject(error);
+    });
   });
-}
+};

@@ -44,8 +44,14 @@ const parseEntity = parser => {
 
     // Validate the parsed number
     if (!isNaN(num) && num.toString(base).toLowerCase() === numText.replace(/^0+/, '')) {
+      if (!(num === 9 || num === 10 || num === 13 ||
+          (num >= 0x20 && num <= 0xD7FF) || (num >= 0xE000 && num <= 0xFFFD) ||
+          (num >= 0x10000 && num <= 0x10FFFF))) {
+        error(parser, 'Invalid XML character reference');
+      }
       return String.fromCodePoint(num);
     }
+    return error(parser, 'Invalid XML character reference');
   }
 
   return `&${parser.entity};`;
@@ -64,14 +70,14 @@ const beginWhiteSpace = (parser, c) => {
 const charAt = (chunk, i) => i < chunk.length ? chunk[i] : '';
 
 const newTag = parser => {
-  const tag = parser.tag = { name: parser.tagName, attributes: {} };
+  const tag = parser.tag = { name: parser.tagName, attributes: Object.create(null) };
   parser.attribList.length = 0;
   emitNode(parser, 'onopentagstart', tag);
 };
 
 const attrib = parser => {
   if (parser.attribList.includes(parser.attribName) ||
-      parser.tag.attributes.hasOwnProperty(parser.attribName)) {
+      Object.prototype.hasOwnProperty.call(parser.tag.attributes, parser.attribName)) {
     parser.attribName = parser.attribValue = '';
     return;
   }
@@ -135,10 +141,10 @@ const closeTag = parser => {
 
   // Tag not found
   if (t < 0) {
-    parser.textNode += '</' + parser.tagName + '>'
-    parser.state = STATE.TEXT
-    return
+    return error(parser, 'Unexpected closing tag')
   }
+
+  if (t !== parser.tags.length - 1) return error(parser, 'Mismatched closing tag');
 
   // Close all tags until the matching one
   let s = parser.tags.length

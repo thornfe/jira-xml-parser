@@ -610,6 +610,9 @@ class SAXParser {
   }
 
   _end() {
+    if (!this.sawRoot || !this.closedRoot || this.tags.length) {
+      return error(this, 'Unexpected end: missing or unclosed root element')
+    }
     if ((this.state !== STATE.BEGIN) &&
       (this.state !== STATE.BEGIN_WHITESPACE) &&
       (this.state !== STATE.TEXT)) {

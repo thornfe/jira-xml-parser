@@ -11,5 +11,5 @@ export function createEntitySet(patterns: string[]): Set<string> {
 }
 
 export function getLastEntityType(entities: Array<EntityType>): EntityType {
-  return entities.sort((a, b) => a.localeCompare(b))[entities.length - 1];
+  return [...entities].sort((a, b) => a.localeCompare(b))[entities.length - 1];
 }

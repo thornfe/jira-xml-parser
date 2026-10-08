@@ -1,6 +1,6 @@
 {
   "name": "@thornfe/jira-xml-parser",
-  "version": "0.1.17-alpha.0",
+  "version": "1.0.0",
   "description": "Lightweight Jira Xml Parser for big files (uses sax)",
   "author": {
     "name": "Thorn Wu",
@@ -13,10 +13,10 @@
     }
   ],
   "license": "MIT",
-  "homepage": "https://github.com/ThornWu/jira-xml-parser",
+  "homepage": "https://github.com/thornfe/jira-xml-parser",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ThornWu/jira-xml-parser.git"
+    "url": "git+https://github.com/thornfe/jira-xml-parser.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
@@ -24,35 +24,36 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "licenses",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=24.21.0 <25"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format cjs --dts",
-    "dev": "ts-node whole/index.ts",
+    "build": "tsup src/index.ts --format cjs",
+    "dev": "tsup src/index.ts --format cjs --watch",
     "prepare": "npm run build",
     "test": "mocha -r ts-node/register 'test/**/*.test.ts'",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
-  },
-  "dependencies": {
-    "es-toolkit": "^1.35.0"
+    "lint:fix": "eslint . --fix",
+    "test:package": "node scripts/package-smoke.cjs",
+    "check": "pnpm build && pnpm test && pnpm lint && pnpm test:package"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.11",
+    "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.6",
-    "@types/node": "^22.14.1",
-    "@typescript-eslint/eslint-plugin": "^8.50.1",
-    "@typescript-eslint/parser": "^8.50.1",
-    "chai": "^6.2.2",
-    "eslint": "^9.39.2",
-    "mocha": "^11.3.0",
-    "ts-mocha": "^11.1.0",
+    "@types/node": "^24.19.1",
+    "@typescript-eslint/eslint-plugin": "^8.71.0",
+    "@typescript-eslint/parser": "^8.71.1",
+    "chai": "^6.3.0",
+    "eslint": "^10.12.0",
+    "mocha": "^12.0.3",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
     "tsup": "^8.0.2",
-    "typescript": "^5.8.3"
-  }
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "pnpm@10.23.0"
 }

@@ -40,8 +40,12 @@ module.exports = [
         'flatTernaryExpressions': false,
         'ignoreComments': false
       }],
-      '@typescript-eslint/no-explicit-any': 'off',
       ...tsPlugin.configs.recommended.rules
     }
+  },
+  {
+    files: ['test/**/*.ts'],
+    // Preserve existing fixture-based tests; enforce explicit types in source code.
+    rules: { '@typescript-eslint/no-explicit-any': 'off' }
   }
 ];

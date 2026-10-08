@@ -9,3 +9,7 @@ export {
   readObjectFile
 };
 
+
+export type { EntityRecord, EntityRecords, EntityFilter } from './readers/entity-reader';
+export type { ObjectRecord, ObjectRecords } from './readers/object-reader';
+export type { XmlNode } from './xml-parser/file-parser';
